@@ -22,9 +22,10 @@ import { RouterLink } from 'vue-router'
 }
 
 .code {
-  font-size: clamp(64px, 18vw, 200px);
+  font-size: clamp(56px, 18vw, 200px);
   font-family: 'JuliaMono BlackItalic';
   margin: 0;
+  line-height: 1;
   text-shadow:
     0 0 10px #fff,
     0 0 30px #0ff,
@@ -50,5 +51,25 @@ import { RouterLink } from 'vue-router'
 
 .back:hover {
   background: rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 480px) {
+  .code {
+    font-size: clamp(48px, 20vw, 96px);
+    text-shadow:
+      0 0 8px #fff,
+      0 0 20px #0ff,
+      0 0 40px #00f;
+  }
+
+  .text {
+    font-size: clamp(13px, 4vw, 18px);
+  }
+
+  .back {
+    margin-top: 20px;
+    padding: 8px 18px;
+    font-size: 14px;
+  }
 }
 </style>

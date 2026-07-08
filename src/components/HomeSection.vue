@@ -17,12 +17,12 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 500px);
+  min-height: calc(100vh - 50px);
   padding: 24px;
 }
 
 .title {
-  font-size: clamp(42px, 10vw, 160px);
+  font-size: clamp(36px, 10vw, 160px);
   color: #fff;
   font-family: 'JuliaMono BlackItalic';
   text-align: center;
@@ -42,6 +42,7 @@
   font-family: 'JuliaMono BlackItalic';
   text-align: center;
   margin-top: 12px;
+  line-height: 1.6;
   text-shadow:
     0 0 10px #fff,
     0 0 30px #0ff,
@@ -49,21 +50,41 @@
     0 0 100px #00f;
 }
 
-/* 手机上文字紧贴边缘时关掉水平辉光 */
+@media (max-width: 768px) {
+  .hero {
+    padding: 16px;
+  }
+
+  .title {
+    text-shadow:
+      0 0 8px #fff,
+      0 0 24px #0ff,
+      0 0 48px #00f;
+  }
+
+  .intro {
+    text-shadow:
+      0 0 8px #fff,
+      0 0 24px #0ff,
+      0 0 48px #00f;
+  }
+}
+
 @media (max-width: 480px) {
   .title {
-    font-size: clamp(36px, 12vw, 60px);
+    font-size: clamp(36px, 14vw, 60px);
     text-shadow:
-      0 0 8px #fff,
-      0 0 20px #0ff,
-      0 0 40px #00f;
+      0 0 6px #fff,
+      0 0 16px #0ff,
+      0 0 32px #00f;
   }
+
   .intro {
-    font-size: clamp(12px, 4vw, 20px);
+    font-size: clamp(12px, 4vw, 16px);
     text-shadow:
-      0 0 8px #fff,
-      0 0 20px #0ff,
-      0 0 40px #00f;
+      0 0 6px #fff,
+      0 0 16px #0ff,
+      0 0 32px #00f;
   }
 }
 </style>

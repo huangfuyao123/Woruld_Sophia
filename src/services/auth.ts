@@ -1,109 +1,149 @@
 // ============================================================
 //  认证服务层
-//  ----------------------------------------------------------------
-//  目前为开发阶段的 mock 实现：凭据从 .env.local 的 VITE_MOCK_USERS 读取，
-//  生产构建（import.meta.env.PROD）下不提供 mock，登录直接返回错误。
-//
-//  后端就绪后，把 loginRequest 内的 mock 逻辑替换为 fetch('/api/login')，
-//  store 与组件无需改动。
 // ============================================================
 
-/** 已认证用户（状态层与持久化共用同一结构） */
-export interface AuthUser {
-  id: string
-  username: string
-  email: string
-  token: string
-}
+import type { AuthUser, User } from '@/types/auth'
+import { mockUsers } from '@/mock/users'
+
+export type { AuthUser } from '@/types/auth'
 
 export type LoginResult = { success: true; user: AuthUser } | { success: false; error: string }
 
-interface MockUser {
-  id: string
-  username: string
-  email: string
-  password: string
-}
-
 const STORAGE_KEY = 'auth_user'
 
-/** 解析 .env.local 中的模拟用户表（仅开发环境） */
-function loadMockUsers(): Record<string, MockUser> {
+type StorageMode = 'local' | 'session'
+
+function getStorage(mode: StorageMode): Storage {
+  return mode === 'session' ? window.sessionStorage : window.localStorage
+}
+
+function loadMockUsersFromEnv(): Record<string, User> {
   if (!import.meta.env.DEV) return {}
   const raw = import.meta.env.VITE_MOCK_USERS
   if (!raw) return {}
   try {
-    const parsed = JSON.parse(raw) as Record<string, MockUser>
+    const parsed = JSON.parse(raw) as Record<string, User>
     return parsed ?? {}
   } catch {
-    console.warn('[auth] VITE_MOCK_USERS 不是合法 JSON，mock 登录将被禁用')
+    console.warn('[auth] VITE_MOCK_USERS 不是合法 JSON，将回退到 mock/users.ts')
     return {}
   }
 }
 
-const MOCK_USERS = loadMockUsers()
+function getMockUsers(): Record<string, User> {
+  if (!import.meta.env.DEV) return {}
+  const fromEnv = loadMockUsersFromEnv()
+  if (Object.keys(fromEnv).length > 0) return fromEnv
+  return mockUsers
+}
 
-/** 生成不透明的 mock token（不内嵌用户 id 等敏感信息） */
 function generateToken(): string {
   const buf = new Uint8Array(32)
   crypto.getRandomValues(buf)
   return Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-/**
- * 登录请求。
- * TODO（后端接入）：替换为
- *   const res = await fetch('/api/login', {
- *     method: 'POST',
- *     headers: { 'Content-Type': 'application/json' },
- *     body: JSON.stringify({ username, password }),
- *   })
- *   if (!res.ok) throw new Error((await res.json()).message)
- *   return { success: true, user: (await res.json()) as AuthUser }
- */
-export async function loginRequest(username: string, password: string): Promise<LoginResult> {
-  if (import.meta.env.PROD) {
-    return { success: false, error: '登录服务尚未接入（后端未配置）' }
-  }
-
-  const matched = MOCK_USERS[username]
-  if (!matched) return { success: false, error: '用户名不存在' }
-  if (matched.password !== password) return { success: false, error: '密码错误' }
-
+function toAuthUser(user: User): AuthUser {
   return {
-    success: true,
-    user: {
-      id: matched.id,
-      username: matched.username,
-      email: matched.email,
-      token: generateToken(),
-    },
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    email: user.email,
+    avatarUrl: user.avatarUrl,
+    token: generateToken(),
+    roles: user.roles,
   }
 }
 
-/** 从 localStorage 恢复用户；结构不合法则清除并返回 null */
-export function loadUser(): AuthUser | null {
-  const raw = localStorage.getItem(STORAGE_KEY)
+function parseStoredUser(raw: string | null): AuthUser | null {
   if (!raw) return null
   try {
     const data = JSON.parse(raw) as Partial<AuthUser>
-    // TODO（真实 JWT）：在此解析 token 的 exp，过期则 logout。
-    if (data.id && data.username && data.email && data.token) {
+    if (data.id && data.username && data.token && Array.isArray(data.roles)) {
       return data as AuthUser
     }
   } catch {
-    /* fallthrough */
   }
-  localStorage.removeItem(STORAGE_KEY)
   return null
 }
 
-export function persistUser(user: AuthUser): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+function clearInvalidStoredUser(mode: StorageMode): void {
+  getStorage(mode).removeItem(STORAGE_KEY)
+}
+
+async function loginWithMock(username: string, password: string): Promise<LoginResult> {
+  const users = getMockUsers()
+  const matched = users[username]
+  if (!matched) return { success: false, error: '用户名不存在' }
+  if (matched.password !== password) return { success: false, error: '密码错误' }
+
+  return { success: true, user: toAuthUser(matched) }
+}
+
+async function loginWithBackend(username: string, password: string): Promise<LoginResult> {
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    })
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { message?: string }
+      return { success: false, error: body.message ?? '登录失败' }
+    }
+    const user = (await res.json()) as AuthUser
+    return { success: true, user }
+  } catch {
+    return { success: false, error: '登录服务暂不可用' }
+  }
+}
+
+export async function loginRequest(username: string, password: string): Promise<LoginResult> {
+  if (import.meta.env.DEV) return loginWithMock(username, password)
+  return loginWithBackend(username, password)
+}
+
+export function loadUser(): AuthUser | null {
+  const localUser = parseStoredUser(window.localStorage.getItem(STORAGE_KEY))
+  if (localUser) return localUser
+  if (window.localStorage.getItem(STORAGE_KEY)) clearInvalidStoredUser('local')
+
+  const sessionUser = parseStoredUser(window.sessionStorage.getItem(STORAGE_KEY))
+  if (sessionUser) return sessionUser
+  if (window.sessionStorage.getItem(STORAGE_KEY)) clearInvalidStoredUser('session')
+
+  return null
+}
+
+export function persistUser(user: AuthUser, rememberMe = true): void {
+  const targetMode: StorageMode = rememberMe ? 'local' : 'session'
+  const otherMode: StorageMode = rememberMe ? 'session' : 'local'
+
+  getStorage(targetMode).setItem(STORAGE_KEY, JSON.stringify(user))
+  getStorage(otherMode).removeItem(STORAGE_KEY)
 }
 
 export function clearUser(): void {
-  localStorage.removeItem(STORAGE_KEY)
+  window.localStorage.removeItem(STORAGE_KEY)
+  window.sessionStorage.removeItem(STORAGE_KEY)
+}
+
+export function updatePersistedUser(patch: Partial<AuthUser>): AuthUser | null {
+  const localUser = parseStoredUser(window.localStorage.getItem(STORAGE_KEY))
+  if (localUser) {
+    const nextUser: AuthUser = { ...localUser, ...patch }
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser))
+    return nextUser
+  }
+
+  const sessionUser = parseStoredUser(window.sessionStorage.getItem(STORAGE_KEY))
+  if (sessionUser) {
+    const nextUser: AuthUser = { ...sessionUser, ...patch }
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser))
+    return nextUser
+  }
+
+  return null
 }
 
 export const AUTH_STORAGE_KEY = STORAGE_KEY

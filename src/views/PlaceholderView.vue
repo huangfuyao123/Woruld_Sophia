@@ -27,7 +27,7 @@ const title = computed(() => (route.meta.title as string) ?? '建设中')
 }
 
 .title {
-  font-size: clamp(36px, 8vw, 96px);
+  font-size: clamp(32px, 8vw, 96px);
   font-family: 'JuliaMono BlackItalic';
   margin: 0;
   text-shadow:
@@ -56,5 +56,38 @@ const title = computed(() => (route.meta.title as string) ?? '建设中')
 
 .back:hover {
   background: rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 768px) {
+  .placeholder {
+    padding: 16px;
+  }
+
+  .title {
+    text-shadow:
+      0 0 8px #fff,
+      0 0 24px #0ff,
+      0 0 48px #00f;
+  }
+}
+
+@media (max-width: 480px) {
+  .title {
+    font-size: clamp(28px, 10vw, 48px);
+    text-shadow:
+      0 0 6px #fff,
+      0 0 16px #0ff,
+      0 0 32px #00f;
+  }
+
+  .hint {
+    font-size: clamp(12px, 3.5vw, 16px);
+  }
+
+  .back {
+    margin-top: 20px;
+    padding: 7px 18px;
+    font-size: 14px;
+  }
 }
 </style>

@@ -1,9 +1,6 @@
 <template>
   <div class="login-container">
-    <!-- 左上角装饰 -->
     <img class="deco deco-tl" src="@/assets/images/sjs.png" alt="" />
-
-    <!-- 右下角装饰 -->
     <img class="deco deco-br" src="@/assets/images/露西亚.png" alt="" />
 
     <div class="login-card">
@@ -36,6 +33,11 @@
           <span v-if="errors.password" class="field-error">{{ errors.password }}</span>
         </div>
 
+        <label class="remember-row" for="remember-me">
+          <input id="remember-me" v-model="rememberMe" type="checkbox" />
+          <span>记住我</span>
+        </label>
+
         <button type="submit" class="submit-btn" :disabled="loading">
           {{ loading ? 'Signing in…' : 'Sign In' }}
         </button>
@@ -48,17 +50,19 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { LOGIN_SUCCESS_MESSAGE } from '@/services/auth'
+import { resolveProfileRoute } from '@/utils/profile'
 
 const auth = useAuthStore()
-const route = useRoute()
+const router = useRouter()
 
 const form = reactive({ username: '', password: '' })
 const errors = reactive({ username: '', password: '' })
 const serverError = ref('')
 const loading = ref(false)
+const rememberMe = ref(true)
 
 function validate(): boolean {
   errors.username = ''
@@ -80,29 +84,29 @@ async function handleLogin() {
   serverError.value = ''
   loading.value = true
 
-  const res = await auth.login(form.username, form.password)
+  const res = await auth.login({
+    username: form.username,
+    password: form.password,
+    rememberMe: rememberMe.value,
+  })
   loading.value = false
 
   if (res.success) {
-    // 弹窗登录：通知父窗口无刷新同步登录态，并关闭自身
     if (window.opener && !window.opener.closed) {
       window.opener.postMessage(LOGIN_SUCCESS_MESSAGE, window.location.origin)
       window.close()
       return
     }
-    // 直接访问 /login（非弹窗）：跳转到 redirect 或首页
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
-    window.location.replace(redirect)
-  } else {
-    serverError.value = res.error ?? '登录失败，请重试'
+
+    await router.replace(resolveProfileRoute(auth.user))
+    return
   }
+
+  serverError.value = res.error ?? '登录失败，请重试'
 }
 </script>
 
 <style scoped>
-/* ========================================
-   页面容器 + 背景
-   ======================================== */
 .login-container {
   position: relative;
   display: flex;
@@ -114,16 +118,12 @@ async function handleLogin() {
   overflow: hidden;
 }
 
-/* ========================================
-   角落装饰图
-   ======================================== */
 .deco {
   position: absolute;
   pointer-events: none;
   opacity: 0.18;
 }
 
-/* 左上角 */
 .deco-tl {
   top: 30px;
   left: -15px;
@@ -131,17 +131,13 @@ async function handleLogin() {
   height: 140px;
 }
 
-/* 右下角 */
 .deco-br {
-  bottom: 0px;
-  right: 0px;
+  bottom: 0;
+  right: 0;
   width: 120px;
   height: 180px;
 }
 
-/* ========================================
-   登录卡片
-   ======================================== */
 .login-card {
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(20px);
@@ -202,6 +198,23 @@ async function handleLogin() {
   display: block;
 }
 
+.remember-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 20px;
+  color: #333;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.remember-row input {
+  width: 16px;
+  height: 16px;
+}
+
 .submit-btn {
   width: 100%;
   padding: 16px;
@@ -237,5 +250,86 @@ async function handleLogin() {
   border: 1px solid #ffccc7;
   border-radius: 6px;
   font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .login-container {
+    padding: 16px;
+  }
+
+  .login-card {
+    padding: 32px 28px;
+    border-radius: 14px;
+  }
+
+  .login-title {
+    font-size: 22px;
+    margin-bottom: 24px;
+  }
+
+  .form-group label {
+    font-size: 16px;
+  }
+
+  .form-group input {
+    padding: 12px;
+    font-size: 15px;
+  }
+
+  .submit-btn {
+    padding: 14px;
+    font-size: 15px;
+  }
+
+  .deco-tl {
+    width: 100px;
+    height: 100px;
+    opacity: 0.12;
+  }
+
+  .deco-br {
+    width: 80px;
+    height: 120px;
+    opacity: 0.12;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 24px 20px;
+    border-radius: 12px;
+  }
+
+  .login-title {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-group label {
+    font-size: 15px;
+  }
+
+  .form-group input {
+    padding: 11px;
+    font-size: 14px;
+  }
+
+  .submit-btn {
+    padding: 12px;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+  }
+
+  .deco-tl {
+    display: none;
+  }
+
+  .deco-br {
+    display: none;
+  }
 }
 </style>

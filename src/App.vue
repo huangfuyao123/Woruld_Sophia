@@ -1,12 +1,17 @@
 <template>
-  <NavBar />
+  <NavBar v-if="isHomePage" />
   <main class="content">
     <router-view />
   </main>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import NavBar from './components/NavBar.vue'
+
+const route = useRoute()
+const isHomePage = computed(() => route.name === 'home')
 </script>
 
 <style>
@@ -23,6 +28,10 @@ import NavBar from './components/NavBar.vue'
   src: url('/fonts/JuliaMono-Medium.ttf') format('truetype');
 }
 
+:root {
+  font-size: 16px;
+}
+
 *,
 *::before,
 *::after {
@@ -33,6 +42,19 @@ import NavBar from './components/NavBar.vue'
 
 html {
   overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (max-width: 768px) {
+  :root {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    font-size: 14px;
+  }
 }
 
 body {
@@ -40,6 +62,8 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   background-color: rgb(40, 70, 150);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #app {

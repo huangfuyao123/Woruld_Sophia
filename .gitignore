@@ -37,3 +37,10 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Django backend
+backend/.env
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/db.sqlite3
