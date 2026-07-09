@@ -34,11 +34,16 @@ class AuthUserSerializer(serializers.ModelSerializer):
     avatarUrl = serializers.CharField(source='avatar_url')
     roles = serializers.SerializerMethodField()
     token = serializers.CharField(read_only=True, default='')
+    refreshToken = serializers.CharField(read_only=True, default='')
     isRoot = serializers.BooleanField(source='is_root')
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'displayName', 'email', 'avatarUrl', 'bio', 'token', 'roles', 'isRoot']
+        fields = [
+            'id', 'username', 'displayName', 'email',
+            'avatarUrl', 'bio', 'token', 'refreshToken',
+            'roles', 'isRoot',
+        ]
 
     def get_id(self, obj):
         return f'u{obj.id}'
