@@ -181,6 +181,18 @@ const router = createRouter({
       meta: { title: '会长个人信息页', requiresAuth: true, profileType: 'president' },
     },
     {
+      path: '/profile/root',
+      name: 'profile-root',
+      component: () => import('@/views/profile/RootProfileView.vue'),
+      meta: { title: '超级管理工作台', requiresAuth: true, profileType: 'root' },
+    },
+    {
+      path: '/profile/root/accounts',
+      name: 'profile-root-accounts',
+      component: () => import('@/views/profile/AccountManagementDetailView.vue'),
+      meta: { title: '账户管理', requiresAuth: true, profileType: 'root' },
+    },
+    {
       path: '/materials',
       name: 'materials',
       component: () => import('@/views/PlaceholderView.vue'),

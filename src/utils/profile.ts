@@ -1,6 +1,7 @@
 import type { AuthUser, GroupId, ProfileType } from '@/types/auth'
 
 const PROFILE_ROUTE_MAP: Record<ProfileType, string> = {
+  root: '/profile/root',
   conference: '/profile/conference',
   hardware: '/profile/hardware',
   software: '/profile/software',
@@ -14,7 +15,9 @@ export function getUserPrimaryGroup(user: AuthUser | null | undefined): GroupId 
 
   const groupRole = user.roles.find(
     (assignment) =>
-      (assignment.role === 'group_leader' || assignment.role === 'member') &&
+      (assignment.role === 'group_leader' ||
+        assignment.role === 'vice_group_leader' ||
+        assignment.role === 'member') &&
       assignment.scope.type === 'group',
   )
 
@@ -35,12 +38,19 @@ export function isTeacher(user: AuthUser | null | undefined): boolean {
 export function isPresident(user: AuthUser | null | undefined): boolean {
   if (!user) return false
   return user.roles.some(
-    (assignment) => assignment.role === 'president' && assignment.scope.type === 'global',
+    (assignment) =>
+      (assignment.role === 'president' || assignment.role === 'vice_president') &&
+      assignment.scope.type === 'global',
   )
+}
+
+export function isRootUser(user: AuthUser | null | undefined): boolean {
+  return !!user?.isRoot
 }
 
 export function hasSophiaAdminRole(user: AuthUser | null | undefined): boolean {
   if (!user) return false
+  if (user.isRoot) return true
   return user.roles.some(
     (assignment) =>
       assignment.role === 'sophia_admin' &&
@@ -52,6 +62,7 @@ export function hasSophiaAdminRole(user: AuthUser | null | undefined): boolean {
 export function resolveProfileType(user: AuthUser | null | undefined): ProfileType | null {
   if (!user) return null
 
+  if (user.isRoot) return 'root'
   if (isPresident(user)) return 'president'
   if (isTeacher(user)) return 'teacher'
 

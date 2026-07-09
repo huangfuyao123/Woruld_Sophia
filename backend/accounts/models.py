@@ -6,6 +6,7 @@ class User(AbstractUser):
     display_name = models.CharField('显示名称', max_length=100)
     avatar_url = models.URLField('头像链接', blank=True, default='')
     bio = models.TextField('个人简介', blank=True, default='')
+    is_root = models.BooleanField('超级管理员', default=False)
 
     class Meta:
         verbose_name = '用户'
@@ -18,7 +19,9 @@ class User(AbstractUser):
 class RoleAssignment(models.Model):
     ROLE_CHOICES = [
         ('president', '会长'),
+        ('vice_president', '副会长'),
         ('group_leader', '组长'),
+        ('vice_group_leader', '副组长'),
         ('member', '组员'),
         ('teacher', '指导老师'),
         ('sophia_admin', '寰宇智域管理员'),

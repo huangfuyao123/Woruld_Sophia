@@ -29,9 +29,14 @@
         <p class="sidebar-username">{{ user?.username ?? '-' }}</p>
         <p class="sidebar-role">{{ roleLabel }}</p>
 
-        <button class="find-materials-btn" type="button" @click="goToMaterials">
-          查找资料
-        </button>
+        <div class="sidebar-actions">
+          <button class="find-materials-btn" type="button" @click="goToMaterials">
+            查找资料
+          </button>
+          <button v-if="!user?.isRoot" class="change-pwd-btn" type="button" @click="showPwdDialog = true">
+            修改密码
+          </button>
+        </div>
 
         <div class="bio-area">
           <button class="bio-toggle" type="button" @click="toggleBioEditor">
@@ -93,6 +98,8 @@
         </section>
       </div>
     </div>
+
+    <ChangePasswordDialog :show="showPwdDialog" @cancel="showPwdDialog = false" @success="showPwdDialog = false" />
   </div>
 </template>
 
@@ -103,6 +110,7 @@ import { useAuthStore } from '@/stores/auth'
 import { GROUP_LABELS, ROLE_LABELS } from '@/constants/permissions'
 import { hasSophiaAdminRole, getUserPrimaryGroup, isPresident } from '@/utils/profile'
 import type { GroupId } from '@/types/auth'
+import ChangePasswordDialog from '@/components/ChangePasswordDialog.vue'
 
 withDefaults(
   defineProps<{
@@ -123,6 +131,7 @@ const isEditingAvatar = ref(false)
 const avatarInput = ref('')
 const isEditingBio = ref(false)
 const bioInput = ref('')
+const showPwdDialog = ref(false)
 
 watch(
   user,
@@ -163,7 +172,9 @@ const sophiaStats = computed(() => {
     ? GROUP_LABELS[primaryGroup.value]
     : isPresident(user.value)
       ? '全局'
-      : '—'
+      : user.value?.isRoot
+        ? '超级管理员'
+        : '—'
   return [
     { label: '账号 ID', value: user.value.id },
     { label: '角色数量', value: String(user.value.roles.length) },
@@ -408,6 +419,35 @@ function goHome(): void {
   filter: brightness(1.1);
   transform: translateY(-1px);
   box-shadow: 0 4px 14px var(--accent-border);
+}
+
+.sidebar-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.sidebar-actions .find-materials-btn {
+  margin-top: 0;
+}
+
+.change-pwd-btn {
+  width: 100%;
+  padding: 9px 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  background: #fff;
+  color: #475569;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.change-pwd-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .bio-area {
@@ -679,6 +719,13 @@ function goHome(): void {
   --accent-soft: #f0fdf4;
   --accent-border: rgba(21, 128, 61, 0.15);
   --card-radius: 8px;
+}
+
+.theme-root {
+  --accent: #7c3aed;
+  --accent-soft: #f5f3ff;
+  --accent-border: rgba(124, 58, 237, 0.15);
+  --card-radius: 12px;
 }
 
 /* ===== 各主题卡片风格差异 ===== */

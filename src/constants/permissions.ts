@@ -10,7 +10,9 @@ export const GROUP_LABELS: Record<GroupId, string> = {
 export const ROLE_LABELS: Record<RoleName, string> = {
   member: '组员',
   group_leader: '组长',
+  vice_group_leader: '副组长',
   president: '会长',
+  vice_president: '副会长',
   teacher: '指导老师',
   sophia_admin: '寰宇智域管理员',
 }

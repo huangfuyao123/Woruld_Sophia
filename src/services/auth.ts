@@ -91,15 +91,15 @@ async function loginWithBackend(username: string, password: string): Promise<Log
       const body = (await res.json().catch(() => ({}))) as { message?: string }
       return { success: false, error: body.message ?? '登录失败' }
     }
-    const user = (await res.json()) as AuthUser
-    return { success: true, user }
+    const data = (await res.json()) as AuthUser
+    if (!data.roles) data.roles = []
+    return { success: true, user: data }
   } catch {
-    return { success: false, error: '登录服务暂不可用' }
+    return { success: false, error: '登录服务暂不可用，请检查后端是否启动' }
   }
 }
 
 export async function loginRequest(username: string, password: string): Promise<LoginResult> {
-  if (import.meta.env.DEV) return loginWithMock(username, password)
   return loginWithBackend(username, password)
 }
 

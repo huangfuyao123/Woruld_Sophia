@@ -1,8 +1,15 @@
 export type GroupId = 'conference' | 'hardware' | 'software' | 'network'
 export type ModuleId = 'woruld_sophia'
-export type ProfileType = GroupId | 'teacher' | 'president'
+export type ProfileType = GroupId | 'teacher' | 'president' | 'root'
 
-export type RoleName = 'president' | 'group_leader' | 'member' | 'teacher' | 'sophia_admin'
+export type RoleName =
+  | 'president'
+  | 'vice_president'
+  | 'group_leader'
+  | 'vice_group_leader'
+  | 'member'
+  | 'teacher'
+  | 'sophia_admin'
 
 export type Scope =
   | { type: 'self' }
@@ -24,6 +31,7 @@ export interface User {
   avatarUrl?: string
   password: string
   roles: RoleAssignment[]
+  isRoot?: boolean
 }
 
 export interface AuthUser {
@@ -35,4 +43,5 @@ export interface AuthUser {
   bio?: string
   token: string
   roles: RoleAssignment[]
+  isRoot?: boolean
 }
