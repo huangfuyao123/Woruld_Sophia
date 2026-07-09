@@ -258,8 +258,8 @@ function cancelLogout(): void {
   showLogoutConfirm.value = false
 }
 
-function confirmLogout(): void {
-  auth.logout()
+async function confirmLogout(): Promise<void> {
+  await auth.logout()
   menuOpen.value = false
   profileMenuOpen.value = false
   showLogoutConfirm.value = false

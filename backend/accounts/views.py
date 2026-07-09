@@ -2,7 +2,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from .models import RoleAssignment, User
 from .serializers import (
@@ -16,9 +16,11 @@ from .serializers import (
 ROOT_PASSWORD = 'YnaNz.thKgf.Nub.qq'
 
 
-def _build_auth_user(user: User, token: str) -> dict:
+def _build_auth_user(user: User, access_token: str, refresh_token: str = '') -> dict:
     data = AuthUserSerializer(user).data
-    data['token'] = token
+    data['token'] = access_token
+    if refresh_token:
+        data['refreshToken'] = refresh_token
     return data
 
 
@@ -54,18 +56,24 @@ def login(request):
             return Response({'message': '密码错误'}, status=status.HTTP_401_UNAUTHORIZED)
 
     refresh = RefreshToken.for_user(user)
-    return Response(_build_auth_user(user, str(refresh.access_token)))
+    return Response(_build_auth_user(user, str(refresh.access_token), str(refresh)))
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def me(request):
-    if not request.user.is_authenticated:
-        return Response({'message': '未登录'}, status=status.HTTP_401_UNAUTHORIZED)
     return Response(AuthUserSerializer(request.user).data)
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def logout(request):
+    refresh_token = request.data.get('refreshToken', '')
+    if refresh_token:
+        try:
+            RefreshToken(refresh_token).blacklist()
+        except TokenError:
+            pass
     return Response({'message': '已登出'})
 
 
@@ -85,6 +93,22 @@ def change_password(request):
     user.set_password(new_pwd)
     user.save()
     return Response({'message': '密码修改成功'})
+
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def update_profile(request):
+    user = request.user
+    if 'displayName' in request.data:
+        user.display_name = request.data['displayName']
+    if 'avatarUrl' in request.data:
+        user.avatar_url = request.data.get('avatarUrl') or ''
+    if 'bio' in request.data:
+        user.bio = request.data.get('bio') or ''
+    if 'email' in request.data:
+        user.email = request.data.get('email') or ''
+    user.save()
+    return Response(AuthUserSerializer(user).data)
 
 
 @api_view(['GET'])

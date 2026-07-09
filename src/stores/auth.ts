@@ -8,6 +8,8 @@ import {
   updatePersistedUser,
   type AuthUser,
 } from '@/services/auth'
+import { logoutAPI, getMeAPI } from '@/api/auth'
+import { updateProfileAPI } from '@/api/profile'
 
 type LoginPayload = {
   username: string
@@ -30,21 +32,44 @@ export const useAuthStore = defineStore('auth', () => {
     return { success: false as const, error: res.error }
   }
 
-  function logout() {
+  async function logout() {
+    if (user.value?.refreshToken) {
+      await logoutAPI(user.value.refreshToken)
+    }
+    logoutLocal()
+  }
+
+  function logoutLocal() {
     user.value = null
     clearUser()
   }
 
-  function checkAuth() {
+  async function checkAuth() {
     user.value = loadUser()
-  }
-
-  function updateProfile(patch: Partial<AuthUser>) {
-    const nextUser = updatePersistedUser(patch)
-    if (nextUser) {
-      user.value = nextUser
+    if (!user.value?.token) {
+      logoutLocal()
+      return
+    }
+    const fresh = await getMeAPI()
+    if (fresh) {
+      user.value = fresh
+      persistUser(fresh, !!localStorage.getItem('auth_user'))
+    } else {
+      logoutLocal()
     }
   }
 
-  return { user, isAuthenticated, login, logout, checkAuth, updateProfile }
+  async function updateProfile(patch: Partial<AuthUser>) {
+    const next = await updateProfileAPI(patch)
+    const merged: AuthUser = {
+      ...(user.value ?? next),
+      ...next,
+      token: user.value?.token ?? next.token,
+      refreshToken: user.value?.refreshToken ?? next.refreshToken,
+    }
+    user.value = merged
+    updatePersistedUser(merged)
+  }
+
+  return { user, isAuthenticated, login, logout, logoutLocal, checkAuth, updateProfile }
 })

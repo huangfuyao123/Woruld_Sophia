@@ -42,6 +42,7 @@ export interface AuthUser {
   avatarUrl?: string
   bio?: string
   token: string
+  refreshToken?: string
   roles: RoleAssignment[]
   isRoot?: boolean
 }

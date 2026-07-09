@@ -1,3 +1,4 @@
+import { apiRequest } from './client'
 import type { AuthUser } from '@/types/auth'
 import { resolveProfileType, hasSophiaAdminRole } from '@/utils/profile'
 
@@ -13,4 +14,11 @@ export async function getMyProfileSummary(user: AuthUser | null): Promise<Profil
     hasSophiaAdminRole: hasSophiaAdminRole(user),
     user,
   }
+}
+
+export async function updateProfileAPI(patch: Partial<AuthUser>): Promise<AuthUser> {
+  return apiRequest<AuthUser>('/api/profile', {
+    method: 'PUT',
+    body: JSON.stringify(patch),
+  })
 }

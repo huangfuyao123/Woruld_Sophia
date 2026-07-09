@@ -1,9 +1,8 @@
 // ============================================================
-//  认证服务层
+//  认证服务层（纯后端，无 mock）
 // ============================================================
 
-import type { AuthUser, User } from '@/types/auth'
-import { mockUsers } from '@/mock/users'
+import type { AuthUser } from '@/types/auth'
 
 export type { AuthUser } from '@/types/auth'
 
@@ -17,44 +16,6 @@ function getStorage(mode: StorageMode): Storage {
   return mode === 'session' ? window.sessionStorage : window.localStorage
 }
 
-function loadMockUsersFromEnv(): Record<string, User> {
-  if (!import.meta.env.DEV) return {}
-  const raw = import.meta.env.VITE_MOCK_USERS
-  if (!raw) return {}
-  try {
-    const parsed = JSON.parse(raw) as Record<string, User>
-    return parsed ?? {}
-  } catch {
-    console.warn('[auth] VITE_MOCK_USERS 不是合法 JSON，将回退到 mock/users.ts')
-    return {}
-  }
-}
-
-function getMockUsers(): Record<string, User> {
-  if (!import.meta.env.DEV) return {}
-  const fromEnv = loadMockUsersFromEnv()
-  if (Object.keys(fromEnv).length > 0) return fromEnv
-  return mockUsers
-}
-
-function generateToken(): string {
-  const buf = new Uint8Array(32)
-  crypto.getRandomValues(buf)
-  return Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('')
-}
-
-function toAuthUser(user: User): AuthUser {
-  return {
-    id: user.id,
-    username: user.username,
-    displayName: user.displayName,
-    email: user.email,
-    avatarUrl: user.avatarUrl,
-    token: generateToken(),
-    roles: user.roles,
-  }
-}
-
 function parseStoredUser(raw: string | null): AuthUser | null {
   if (!raw) return null
   try {
@@ -63,21 +24,13 @@ function parseStoredUser(raw: string | null): AuthUser | null {
       return data as AuthUser
     }
   } catch {
+    /* fallthrough */
   }
   return null
 }
 
 function clearInvalidStoredUser(mode: StorageMode): void {
   getStorage(mode).removeItem(STORAGE_KEY)
-}
-
-async function loginWithMock(username: string, password: string): Promise<LoginResult> {
-  const users = getMockUsers()
-  const matched = users[username]
-  if (!matched) return { success: false, error: '用户名不存在' }
-  if (matched.password !== password) return { success: false, error: '密码错误' }
-
-  return { success: true, user: toAuthUser(matched) }
 }
 
 async function loginWithBackend(username: string, password: string): Promise<LoginResult> {
@@ -144,6 +97,10 @@ export function updatePersistedUser(patch: Partial<AuthUser>): AuthUser | null {
   }
 
   return null
+}
+
+export function getStoredRefreshToken(): string | null {
+  return loadUser()?.refreshToken ?? null
 }
 
 export const AUTH_STORAGE_KEY = STORAGE_KEY
