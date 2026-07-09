@@ -1,6 +1,7 @@
 import { computed, reactive, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { canEditGroup, canViewGroup } from '@/utils/permissions'
+import { generateUuid } from '@/utils/generateUuid'
 
 export interface RepairRecord {
   id: string
@@ -29,7 +30,7 @@ const NAME_KEY = 'hw2026_table_name'
 
 function createEmptyRecord(): RepairRecord {
   return {
-    id: crypto.randomUUID(),
+    id: generateUuid(),
     problemDate: '',
     classroom: '',
     repairPeriod: '',
