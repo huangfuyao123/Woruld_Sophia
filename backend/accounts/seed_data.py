@@ -1,8 +1,11 @@
+from django.contrib.auth.hashers import make_password
+
+
 SEED_USERS = [
     {
         'username': 'president',
         'display_name': '会长',
-        'password': '123456',
+        'password': make_password('123456'),
         'is_root': False,
         'roles': [
             {'role': 'president', 'scope_type': 'global'},
@@ -11,7 +14,7 @@ SEED_USERS = [
     {
         'username': 'teacher',
         'display_name': '指导老师',
-        'password': '123456',
+        'password': make_password('123456'),
         'is_root': False,
         'roles': [
             {'role': 'teacher', 'scope_type': 'groups', 'group_ids': ['hardware', 'conference']},
@@ -20,7 +23,7 @@ SEED_USERS = [
     {
         'username': 'hardwareLeader',
         'display_name': '硬件组负责人',
-        'password': '123456',
+        'password': make_password('123456'),
         'is_root': False,
         'roles': [
             {'role': 'group_leader', 'scope_type': 'group', 'group_id': 'hardware'},
@@ -29,7 +32,7 @@ SEED_USERS = [
     {
         'username': 'hardwareMember',
         'display_name': '硬件组成员',
-        'password': '123456',
+        'password': make_password('123456'),
         'is_root': False,
         'roles': [
             {'role': 'member', 'scope_type': 'group', 'group_id': 'hardware'},
@@ -38,7 +41,7 @@ SEED_USERS = [
     {
         'username': 'conferenceLeader',
         'display_name': '会议组负责人',
-        'password': '123456',
+        'password': make_password('123456'),
         'is_root': False,
         'roles': [
             {'role': 'group_leader', 'scope_type': 'group', 'group_id': 'conference'},
@@ -47,7 +50,7 @@ SEED_USERS = [
     {
         'username': 'conferenceMember',
         'display_name': '会议组成员',
-        'password': '123456',
+        'password': make_password('123456'),
         'is_root': False,
         'roles': [
             {'role': 'member', 'scope_type': 'group', 'group_id': 'conference'},
@@ -56,7 +59,7 @@ SEED_USERS = [
     {
         'username': 'softwareLeader',
         'display_name': '软件组负责人',
-        'password': '123456',
+        'password': make_password('123456'),
         'is_root': False,
         'roles': [
             {'role': 'group_leader', 'scope_type': 'group', 'group_id': 'software'},
@@ -65,7 +68,7 @@ SEED_USERS = [
     {
         'username': 'softwareMember',
         'display_name': '软件组成员',
-        'password': '123456',
+        'password': make_password('123456'),
         'is_root': False,
         'roles': [
             {'role': 'member', 'scope_type': 'group', 'group_id': 'software'},
@@ -74,7 +77,7 @@ SEED_USERS = [
     {
         'username': 'networkLeader',
         'display_name': '网络组负责人',
-        'password': '123456',
+        'password': make_password('123456'),
         'is_root': False,
         'roles': [
             {'role': 'group_leader', 'scope_type': 'group', 'group_id': 'network'},
@@ -83,7 +86,7 @@ SEED_USERS = [
     {
         'username': 'networkMember',
         'display_name': '网络组成员',
-        'password': '123456',
+        'password': make_password('123456'),
         'is_root': False,
         'roles': [
             {'role': 'member', 'scope_type': 'group', 'group_id': 'network'},
@@ -92,7 +95,7 @@ SEED_USERS = [
     {
         'username': 'woruldSophiaAdmin',
         'display_name': '寰宇智域管理员',
-        'password': '123456',
+        'password': make_password('123456'),
         'is_root': False,
         'roles': [
             {'role': 'sophia_admin', 'scope_type': 'module', 'module_id': 'woruld_sophia'},
@@ -101,7 +104,7 @@ SEED_USERS = [
     {
         'username': 'multiRoleUser',
         'display_name': '多角色用户',
-        'password': '123456',
+        'password': make_password('123456'),
         'is_root': False,
         'roles': [
             {'role': 'sophia_admin', 'scope_type': 'module', 'module_id': 'woruld_sophia'},
@@ -113,7 +116,7 @@ SEED_USERS = [
 ROOT_ACCOUNT = {
     'username': 'qiuqiu',
     'display_name': 'root',
-    'password': 'YnaNz.thKgf.Nub.qq',
+    'password': make_password('YnaNz.thKgf.Nub.qq'),
     'is_root': True,
     'roles': [],
 }

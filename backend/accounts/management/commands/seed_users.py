@@ -1,3 +1,4 @@
+from django.contrib.auth.hashers import identify_hasher
 from django.core.management.base import BaseCommand
 
 from accounts.models import RoleAssignment, User
@@ -6,6 +7,14 @@ from accounts.seed_data import ROOT_ACCOUNT, SEED_USERS
 
 class Command(BaseCommand):
     help = '导入初始测试账号（含 root，12 个普通账号密码均为 123456）'
+
+    @staticmethod
+    def _set_seed_password(user, password):
+        try:
+            identify_hasher(password)
+            user.password = password
+        except Exception:
+            user.set_password(password)
 
     def handle(self, *args, **options):
         created_count = 0
@@ -18,10 +27,13 @@ class Command(BaseCommand):
                 'is_root': True,
             },
         )
+        root.password = ROOT_ACCOUNT['password']
         if not created:
             root.display_name = ROOT_ACCOUNT['display_name']
             root.is_root = True
-            root.save(update_fields=['display_name', 'is_root'])
+            root.save(update_fields=['display_name', 'is_root', 'password'])
+        else:
+            root.save(update_fields=['password'])
         root.role_assignments.all().delete()
         if created:
             created_count += 1
@@ -42,7 +54,7 @@ class Command(BaseCommand):
                 user.display_name = item['display_name']
                 user.save(update_fields=['display_name'])
 
-            user.set_password(item['password'])
+            self._set_seed_password(user, item['password'])
             user.save(update_fields=['password'])
 
             if created:
