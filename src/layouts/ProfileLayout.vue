@@ -7,7 +7,6 @@
     </button>
 
     <div class="profile-container">
-      <!-- ===== 左侧 sidebar ===== -->
       <aside class="profile-sidebar">
         <div class="avatar-box">
           <img v-if="avatarPreview" class="avatar-img" :src="avatarPreview" alt="avatar" />
@@ -69,13 +68,11 @@
         </div>
       </aside>
 
-      <!-- ===== 右侧 content ===== -->
       <div class="profile-main">
         <nav class="profile-tabs">
           <span class="tab active">概览</span>
         </nav>
 
-        <!-- 工作台（上移） -->
         <section class="workspace-section">
           <div class="section-header">
             <h2 class="section-title">{{ title }}</h2>
@@ -86,11 +83,15 @@
           </div>
         </section>
 
-        <!-- 寰宇智域数据（指导老师无） -->
         <section v-if="showSophiaStats" class="sophia-section">
           <h2 class="sophia-title">寰宇智域数据</h2>
           <div class="sophia-stats">
-            <div v-for="stat in sophiaStats" :key="stat.label" class="stat-card">
+            <div
+              v-for="stat in sophiaStats"
+              :key="stat.label"
+              class="stat-card"
+              :class="`stat-card-${stat.tone}`"
+            >
               <span class="stat-label">{{ stat.label }}</span>
               <span class="stat-value">{{ stat.value }}</span>
             </div>
@@ -122,6 +123,8 @@ withDefaults(
   }>(),
   { showSophiaStats: true },
 )
+
+type SophiaStatTone = 'username' | 'activity' | 'group' | 'sophia'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -166,20 +169,37 @@ const roleDescriptions = computed(() => {
   })
 })
 
+const activityLevel = computed(() => {
+  if (!user.value) return '低'
+
+  let score = 0
+  if (user.value.avatarUrl?.trim()) score += 1
+  if (user.value.bio?.trim()) score += 1
+  if (user.value.email?.trim()) score += 1
+  if (user.value.roles.length >= 2) score += 1
+  if (hasSophiaAdminRole(user.value)) score += 1
+
+  if (score >= 4) return '高'
+  if (score >= 2) return '中'
+  return '低'
+})
+
 const sophiaStats = computed(() => {
-  if (!user.value) return []
+  if (!user.value) return [] as Array<{ label: string; value: string; tone: SophiaStatTone }>
+
   const groupLabel = primaryGroup.value
     ? GROUP_LABELS[primaryGroup.value]
     : isPresident(user.value)
       ? '全局'
-      : user.value?.isRoot
+      : user.value.isRoot
         ? '超级管理员'
         : '—'
+
   return [
-    { label: '账号 ID', value: user.value.id },
-    { label: '角色数量', value: String(user.value.roles.length) },
-    { label: '主要分组', value: groupLabel },
-    { label: '寰宇智域', value: hasSophiaAdminRole(user.value) ? '管理员' : '普通成员' },
+    { label: '用户名', value: user.value.username, tone: 'username' as const },
+    { label: '活跃度', value: activityLevel.value, tone: 'activity' as const },
+    { label: '主要分组', value: groupLabel, tone: 'group' as const },
+    { label: '寰宇智域', value: hasSophiaAdminRole(user.value) ? '管理员' : '普通成员', tone: 'sophia' as const },
   ]
 })
 
@@ -219,7 +239,6 @@ function goHome(): void {
 </script>
 
 <style scoped>
-/* ===== Base ===== */
 .profile-page {
   --accent: #1e40af;
   --accent-soft: #eff6ff;
@@ -275,7 +294,6 @@ function goHome(): void {
   margin: 0 auto;
 }
 
-/* ===== Sidebar ===== */
 .profile-sidebar {
   display: flex;
   flex-direction: column;
@@ -518,8 +536,8 @@ function goHome(): void {
 .sidebar-meta li {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 4px 0;
+  gap: 12px;
+  margin-bottom: 8px;
   font-size: 13px;
 }
 
@@ -529,50 +547,47 @@ function goHome(): void {
 
 .meta-value {
   color: #334155;
-  font-weight: 500;
+  text-align: right;
 }
 
 .sidebar-roles {
+  width: 100%;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  margin-top: 16px;
+  gap: 8px;
+  margin-top: 14px;
 }
 
 .role-badge {
-  padding: 3px 12px;
-  border: 1px solid var(--accent-border);
+  padding: 4px 10px;
   border-radius: 999px;
+  border: 1px solid var(--accent-border);
   background: var(--accent-soft);
   color: var(--accent);
   font-size: 12px;
-  white-space: nowrap;
 }
 
-/* ===== Main ===== */
 .profile-main {
   min-width: 0;
 }
 
 .profile-tabs {
   display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--card-border);
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
 .tab {
-  padding: 10px 16px;
-  border-bottom: 2px solid transparent;
-  font-size: 14px;
+  padding: 9px 14px;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: #fff;
   color: #64748b;
-  cursor: default;
+  font-size: 14px;
 }
 
 .tab.active {
-  border-bottom-color: var(--accent);
-  font-weight: 600;
+  border-color: var(--accent);
   color: var(--accent);
 }
 
@@ -599,13 +614,29 @@ function goHome(): void {
   gap: 16px;
 }
 
-/* slot 内 .detail-card 通用样式 */
 .workspace-grid :deep(.detail-card) {
+  order: 50;
   border: 1px solid var(--card-border);
   border-radius: var(--card-radius);
   background: #fff;
   padding: 18px;
   transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.workspace-grid :deep(.detail-card[data-priority='1']) {
+  order: 1;
+}
+
+.workspace-grid :deep(.detail-card[data-priority='2']) {
+  order: 2;
+}
+
+.workspace-grid :deep(.detail-card[data-priority='3']) {
+  order: 3;
+}
+
+.workspace-grid :deep(.detail-card[data-priority='4']) {
+  order: 4;
 }
 
 .workspace-grid :deep(.detail-card:hover) {
@@ -637,7 +668,6 @@ function goHome(): void {
   color: #94a3b8;
 }
 
-/* ===== Sophia stats ===== */
 .sophia-section {
   margin-top: 32px;
 }
@@ -658,27 +688,75 @@ function goHome(): void {
 }
 
 .stat-card {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-height: 112px;
   padding: 16px;
   border: 1px solid var(--card-border);
   border-radius: var(--card-radius);
-  background: #fff;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.88));
+}
+
+.stat-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -24px -28px auto;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  opacity: 0.22;
+}
+
+.stat-card-username {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe 60%, #ffffff);
+}
+
+.stat-card-username::after {
+  background: radial-gradient(circle, #2563eb 0%, transparent 72%);
+}
+
+.stat-card-activity {
+  background: linear-gradient(135deg, #ecfeff, #cffafe 58%, #ffffff);
+}
+
+.stat-card-activity::after {
+  background: radial-gradient(circle, #0891b2 0%, transparent 72%);
+}
+
+.stat-card-group {
+  background: linear-gradient(135deg, #f5f3ff, #ede9fe 58%, #ffffff);
+}
+
+.stat-card-group::after {
+  background: radial-gradient(circle, #7c3aed 0%, transparent 72%);
+}
+
+.stat-card-sophia {
+  background: linear-gradient(135deg, #fef3c7, #fde68a 58%, #ffffff);
+}
+
+.stat-card-sophia::after {
+  background: radial-gradient(circle, #d97706 0%, transparent 72%);
 }
 
 .stat-label {
+  position: relative;
+  z-index: 1;
   font-size: 12px;
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .stat-value {
+  position: relative;
+  z-index: 1;
   font-size: 20px;
   font-weight: 700;
   color: var(--accent);
 }
 
-/* ===== 六种主题色调 ===== */
 .theme-software {
   --accent: #1e40af;
   --accent-soft: #eff6ff;
@@ -728,7 +806,6 @@ function goHome(): void {
   --card-radius: 12px;
 }
 
-/* ===== 各主题卡片风格差异 ===== */
 .theme-hardware .workspace-grid :deep(.detail-card) {
   border-left: 3px solid var(--accent);
 }
@@ -749,7 +826,6 @@ function goHome(): void {
   box-shadow: 0 4px 14px var(--accent-border);
 }
 
-/* ===== 响应式 ===== */
 @media (max-width: 1024px) {
   .profile-container {
     grid-template-columns: 240px 1fr;

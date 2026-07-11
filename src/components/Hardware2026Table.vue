@@ -7,6 +7,7 @@
         v-model="tableName.value"
         class="board-title-input"
         type="text"
+        @keydown.enter.prevent="handleEnterSave"
       />
       <h2 v-else class="board-title">{{ tableName.value }}</h2>
 
@@ -16,6 +17,11 @@
         <span class="summary-chip unsolved">未解决 {{ unsolvedCount }}</span>
         <span class="summary-chip second">二次维修 {{ hasSecondRepair }}</span>
       </div>
+    </div>
+
+    <div v-if="canEditFieldSchema" class="schema-toolbar">
+      <span class="schema-toolbar-label">字段结构编辑</span>
+      <button class="schema-reset-btn" type="button" @click="resetColumnLabels">恢复默认字段名</button>
     </div>
 
     <!-- 工具栏 -->
@@ -34,24 +40,186 @@
             <th colspan="6" class="group-second">二次维修</th>
           </tr>
           <tr>
-            <th>问题时间</th>
-            <th>教室</th>
-            <th>报修节数</th>
-            <th>具体问题</th>
-            <th>维修日期</th>
-            <th>维修时间段</th>
-            <th>维修情况</th>
-            <th>是否解决</th>
-            <th>维修人员</th>
-            <th>维修时长</th>
-            <th>备注</th>
-            <th>故障照片</th>
-            <th>二次维修时间</th>
-            <th>维修人员</th>
-            <th>维修内容</th>
-            <th>是否解决</th>
-            <th>维修时间段</th>
-            <th>维修时长</th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.problemDate"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.problemDate }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.classroom"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.classroom }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.repairPeriod"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.repairPeriod }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.problemDetail"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.problemDetail }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.firstRepairDate"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.firstRepairDate }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.firstRepairTimeRange"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.firstRepairTimeRange }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.firstRepairStatus"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.firstRepairStatus }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.firstSolved"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.firstSolved }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.firstRepairPerson"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.firstRepairPerson }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.firstRepairDuration"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.firstRepairDuration }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.remark"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.remark }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.faultPhoto"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.faultPhoto }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.secondRepairDate"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.secondRepairDate }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.secondRepairPerson"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.secondRepairPerson }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.secondRepairContent"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.secondRepairContent }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.secondSolved"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.secondSolved }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.secondRepairTimeRange"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.secondRepairTimeRange }}</template>
+            </th>
+            <th>
+              <input
+                v-if="canEditFieldSchema"
+                v-model="columnLabels.secondRepairDuration"
+                class="header-input"
+                type="text"
+                @keydown.enter.prevent="handleEnterSave"
+              />
+              <template v-else>{{ columnLabels.secondRepairDuration }}</template>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -69,14 +237,14 @@
             </td>
 
             <td><input v-model="row.problemDate" type="date" class="date-input" :disabled="!canEditContent" /></td>
-            <td><input v-model="row.classroom" type="text" class="text-input" placeholder="教室" :disabled="!canEditContent" /></td>
+            <td><input v-model="row.classroom" type="text" class="text-input" placeholder="教室" :disabled="!canEditContent" @keydown.enter.prevent="handleEnterSave" /></td>
             <td>
               <select v-model="row.repairPeriod" class="select-input" :disabled="!canEditContent">
                 <option value="">—</option>
                 <option v-for="opt in REPAIR_PERIODS" :key="opt" :value="opt">{{ opt }}</option>
               </select>
             </td>
-            <td><input v-model="row.problemDetail" type="text" class="text-input" placeholder="问题描述" :disabled="!canEditContent" /></td>
+            <td><input v-model="row.problemDetail" type="text" class="text-input" placeholder="问题描述" :disabled="!canEditContent" @keydown.enter.prevent="handleEnterSave" /></td>
 
             <td><input v-model="row.firstRepairDate" type="date" class="date-input" :disabled="!canEditContent" /></td>
             <td class="time-range-cell">
@@ -86,16 +254,16 @@
                 <input v-model="row.firstRepairEnd" type="time" class="time-input" :disabled="!canEditContent" />
               </div>
             </td>
-            <td><input v-model="row.firstRepairStatus" type="text" class="text-input" placeholder="维修情况" :disabled="!canEditContent" /></td>
+            <td><input v-model="row.firstRepairStatus" type="text" class="text-input" placeholder="维修情况" :disabled="!canEditContent" @keydown.enter.prevent="handleEnterSave" /></td>
             <td>
               <select v-model="row.firstSolved" class="select-input" :disabled="!canEditContent" :data-status="row.firstSolved">
                 <option value="">—</option>
                 <option v-for="opt in SOLVED_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
               </select>
             </td>
-            <td><input v-model="row.firstRepairPerson" type="text" class="text-input" placeholder="维修人员" :disabled="!canEditContent" /></td>
+            <td><input v-model="row.firstRepairPerson" type="text" class="text-input" placeholder="维修人员" :disabled="!canEditContent" @keydown.enter.prevent="handleEnterSave" /></td>
             <td class="duration-cell">{{ calcDuration(row.firstRepairStart, row.firstRepairEnd) }}</td>
-            <td><input v-model="row.remark" type="text" class="text-input" placeholder="备注" :disabled="!canEditContent" /></td>
+            <td><input v-model="row.remark" type="text" class="text-input" placeholder="备注" :disabled="!canEditContent" @keydown.enter.prevent="handleEnterSave" /></td>
             <td class="photo-cell">
               <div class="photo-area">
                 <img v-if="row.faultPhoto" :src="row.faultPhoto" class="photo-preview" alt="故障照片" @click="previewPhoto(row.faultPhoto)" />
@@ -108,8 +276,8 @@
             </td>
 
             <td><input v-model="row.secondRepairDate" type="date" class="date-input" :disabled="!canEditContent" /></td>
-            <td><input v-model="row.secondRepairPerson" type="text" class="text-input" placeholder="维修人员" :disabled="!canEditContent" /></td>
-            <td><input v-model="row.secondRepairContent" type="text" class="text-input" placeholder="维修内容" :disabled="!canEditContent" /></td>
+            <td><input v-model="row.secondRepairPerson" type="text" class="text-input" placeholder="维修人员" :disabled="!canEditContent" @keydown.enter.prevent="handleEnterSave" /></td>
+            <td><input v-model="row.secondRepairContent" type="text" class="text-input" placeholder="维修内容" :disabled="!canEditContent" @keydown.enter.prevent="handleEnterSave" /></td>
             <td>
               <select v-model="row.secondSolved" class="select-input" :disabled="!canEditContent" :data-status="row.secondSolved">
                 <option value="">—</option>
@@ -143,7 +311,9 @@ import { calcDuration, useHardware2026Data, type RepairRecord } from '@/composab
 const {
   records,
   tableName,
+  columnLabels,
   canEditTableName,
+  canEditFieldSchema,
   canEditContent,
   canAddRow,
   totalCount,
@@ -152,6 +322,7 @@ const {
   hasSecondRepair,
   addRow,
   deleteRow,
+  flushSave,
 } = useHardware2026Data()
 
 const REPAIR_PERIODS = ['维修', '12节', '34节', '56节', '78节', '910节', '保障']
@@ -161,6 +332,32 @@ const previewUrl = ref('')
 
 function previewPhoto(url: string): void {
   previewUrl.value = url
+}
+
+function handleEnterSave(): void {
+  flushSave()
+}
+
+function resetColumnLabels(): void {
+  columnLabels.problemDate = '问题时间'
+  columnLabels.classroom = '教室'
+  columnLabels.repairPeriod = '报修节数'
+  columnLabels.problemDetail = '具体问题'
+  columnLabels.firstRepairDate = '维修日期'
+  columnLabels.firstRepairTimeRange = '维修时间段'
+  columnLabels.firstRepairStatus = '维修情况'
+  columnLabels.firstSolved = '是否解决'
+  columnLabels.firstRepairPerson = '维修人员'
+  columnLabels.firstRepairDuration = '维修时长'
+  columnLabels.remark = '备注'
+  columnLabels.faultPhoto = '故障照片'
+  columnLabels.secondRepairDate = '二次维修时间'
+  columnLabels.secondRepairPerson = '维修人员'
+  columnLabels.secondRepairContent = '维修内容'
+  columnLabels.secondSolved = '是否解决'
+  columnLabels.secondRepairTimeRange = '维修时间段'
+  columnLabels.secondRepairDuration = '维修时长'
+  flushSave()
 }
 
 function onPhotoChange(e: Event, row: RepairRecord): void {
@@ -255,6 +452,36 @@ function onPhotoChange(e: Event, row: RepairRecord): void {
 .summary-chip.unsolved { background: #fef2f2; color: #b91c1c; }
 .summary-chip.second { background: #fffbeb; color: #b45309; }
 
+.schema-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--card-border);
+  background: #fff7ed;
+}
+
+.schema-toolbar-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #9a3412;
+}
+
+.schema-reset-btn {
+  padding: 6px 12px;
+  border: 1px solid #fdba74;
+  border-radius: 6px;
+  background: #fff;
+  color: #c2410c;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.schema-reset-btn:hover {
+  background: #ffedd5;
+}
+
 .board-toolbar {
   padding: 12px 24px;
   border-bottom: 1px solid var(--card-border);
@@ -301,6 +528,25 @@ function onPhotoChange(e: Event, row: RepairRecord): void {
 
 .repair-table thead th:first-child {
   border-left: none;
+}
+
+.header-input {
+  width: 100%;
+  min-width: 72px;
+  padding: 4px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.header-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-border);
 }
 
 .group-row th {
