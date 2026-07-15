@@ -285,6 +285,468 @@ src/
 
 ---
 
+## 生产部署与更新流程
+
+> 当前线上环境：**Vue 3 前端静态文件 + Django/Gunicorn API + Nginx 反向代理 + 宝塔面板**
+
+### 目录约定
+
+线上已确认使用以下目录与服务：
+
+- 前端站点目录：`/www/wwwroot/netclub`
+- 后端项目目录：`/root/Woruld_Sophia/backend`
+- 后端虚拟环境：`/root/Woruld_Sophia/backend/venv`
+- Gunicorn 监听地址：`127.0.0.1:8000`
+- Nginx 站点配置：`/www/server/panel/vhost/nginx/47.116.119.51.conf`
+
+### 前端更新流程
+
+当你只修改了 `src/` 下的 Vue 前端代码时，按下面流程更新：
+
+#### 1. 本地构建
+
+```bash
+npm run build
+```
+
+构建完成后会生成 `dist/`。
+
+#### 2. 上传构建产物到服务器临时目录
+
+```bash
+scp -r dist root@47.116.119.51:/root/upload/
+```
+
+上传完成后，服务器上应存在：
+
+```bash
+/root/upload/dist
+```
+
+#### 3. 执行前端部署脚本
+
+```bash
+bash /root/deploy_frontend.sh
+```
+
+该脚本已实现：
+
+- 检查 `dist` 是否完整（必须包含 `index.html` 和 `assets/`）
+- 自动备份当前线上前端文件
+- 仅替换 Vue 构建产物，不删除 Django 的 `static/`、`media/`
+- 部署失败自动回滚
+- 自动只保留最近 5 份前端备份
+
+#### 4. 浏览器强制刷新缓存
+
+部署成功后，如果页面看起来“没变化”，优先强刷缓存：
+
+- `Ctrl + F5`
+- 或浏览器开发者工具 → `Network` → 勾选 `Disable cache`
+
+### 后端更新流程
+
+当你修改了 `backend/` 下的 Django 代码时，先将代码推送到远程仓库，再在服务器执行：
+
+```bash
+bash /root/deploy_backend.sh
+```
+
+该脚本会依次执行：
+
+1. `git pull origin main`
+2. 激活虚拟环境
+3. `pip install -r requirements.txt`
+4. `python manage.py migrate`
+5. `python manage.py collectstatic --noinput`
+6. `supervisorctl restart netclub_gunicorn`
+
+### 前后端一起更新
+
+如果前后端都改了：
+
+1. 本地先构建前端并上传 `dist`
+2. 将后端代码推送到仓库
+3. 在服务器执行：
+
+```bash
+bash /root/deploy_all.sh
+```
+
+### Gunicorn / Supervisor 常用命令
+
+```bash
+supervisorctl status
+supervisorctl status netclub_gunicorn
+supervisorctl restart netclub_gunicorn
+supervisorctl stop netclub_gunicorn
+supervisorctl start netclub_gunicorn
+```
+
+查看 Gunicorn 日志：
+
+```bash
+tail -f /root/Woruld_Sophia/backend/logs/gunicorn_stdout.log
+tail -f /root/Woruld_Sophia/backend/logs/gunicorn_stderr.log
+```
+
+### Nginx 当前配置说明
+
+当前线上 Nginx 的核心结构如下：
+
+- `/`：指向 Vue 前端目录 `/www/wwwroot/netclub`
+- `/api/`：反向代理到 `http://127.0.0.1:8000`
+- `/static/`：映射到 `/www/wwwroot/netclub/static/`
+- `/media/`：映射到 `/www/wwwroot/netclub/media/`
+
+这意味着：
+
+- 前端发布时**不能直接清空整个 `/www/wwwroot/netclub` 目录**
+- 因为该目录中还混放了 Django 的 `static` 和 `media`
+- 所以前端部署脚本只能替换 `index.html`、`assets/` 及少量前端根文件
+
+### Nginx 可优化建议
+
+当前配置整体可用，但建议后续逐步补充：
+
+1. **先使用保守版 HTTPS/HTTP 并行配置**
+   - 当前更推荐 80 和 443 同时可访问
+   - 等证书、域名、跳转链路都确认稳定后，再开启 80 → 443 强制跳转
+
+2. **给 `/api/` 增加超时设置**
+   - 避免接口慢时过早断开，例如：
+   ```nginx
+   proxy_connect_timeout 60s;
+   proxy_send_timeout 60s;
+   proxy_read_timeout 60s;
+   ```
+
+3. **补充常见代理头**
+   - 当前已有 `Host`、`X-Real-IP`、`X-Forwarded-For`、`X-Forwarded-Proto`
+   - 建议额外补上：
+   ```nginx
+   proxy_set_header X-Forwarded-Host $host;
+   proxy_set_header X-Forwarded-Port $server_port;
+   ```
+
+4. **为前端静态资源单独加缓存策略**
+   - 对 `/assets/` 设置较长缓存时间
+   - 对 `index.html` 不做长缓存，减少“前端已更新但页面没变”的概率
+
+5. **生产环境收紧 CORS 来源**
+   - 当前后端 `CORS_ALLOWED_ORIGINS` 里包含本地开发地址和公网 IP
+   - 后续若正式上线域名，建议只保留真实前端访问域名
+
+### 推荐 Nginx 配置（保守版，可直接粘贴到宝塔）
+
+适合当前阶段直接使用：HTTP 与 HTTPS 并行可访问，不立即做强制跳转。
+
+> 当前服务器 IP：`47.116.119.51`
+> 站点根目录：`/www/wwwroot/netclub`
+> Django / Gunicorn 反向代理目标：`127.0.0.1:8000`
+
+```nginx
+server {
+    listen 80;
+    server_name 47.116.119.51;
+
+    # === 宝塔 SSL 文件验证专用（不要删除）===
+    #CERT-APPLY-CHECK--START
+    location ~ \.well-known {
+        root /www/wwwroot/netclub;
+    }
+    #CERT-APPLY-CHECK--END
+
+    # === 首页入口：禁止长缓存 ===
+    location = /index.html {
+        root /www/wwwroot/netclub;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+
+    # === 前端（Vue 3 SPA）===
+    location / {
+        root /www/wwwroot/netclub;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # === Vue 构建产物缓存 ===
+    location /assets/ {
+        alias /www/wwwroot/netclub/assets/;
+        expires 30d;
+        access_log off;
+    }
+
+    # === 后端 API（Django DRF）===
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # === Django 静态文件 ===
+    location /static/ {
+        alias /www/wwwroot/netclub/static/;
+        expires 30d;
+        access_log off;
+    }
+
+    # === 上传文件 ===
+    location /media/ {
+        alias /www/wwwroot/netclub/media/;
+        expires 30d;
+        access_log off;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name 47.116.119.51;
+
+    ssl_certificate /www/server/panel/vhost/cert/47.116.119.51/fullchain.pem;
+    ssl_certificate_key /www/server/panel/vhost/cert/47.116.119.51/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    # === 首页入口：禁止长缓存 ===
+    location = /index.html {
+        root /www/wwwroot/netclub;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+
+    # === 前端（Vue 3 SPA）===
+    location / {
+        root /www/wwwroot/netclub;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # === Vue 构建产物缓存 ===
+    location /assets/ {
+        alias /www/wwwroot/netclub/assets/;
+        expires 30d;
+        access_log off;
+    }
+
+    # === 后端 API（Django DRF）===
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # === Django 静态文件 ===
+    location /static/ {
+        alias /www/wwwroot/netclub/static/;
+        expires 30d;
+        access_log off;
+    }
+
+    # === 上传文件 ===
+    location /media/ {
+        alias /www/wwwroot/netclub/media/;
+        expires 30d;
+        access_log off;
+    }
+}
+```
+
+修改站点配置后，记得执行：
+
+```bash
+nginx -t
+systemctl reload nginx
+```
+
+### 当前脚本文件
+
+服务器上推荐保留以下脚本：
+
+- `/root/deploy_frontend.sh`：前端部署
+- `/root/deploy_backend.sh`：后端部署
+- `/root/deploy_all.sh`：前后端一起部署
+
+### 服务器首次部署步骤
+
+如果要在一台新服务器上首次部署当前项目，建议按下面顺序进行。
+
+#### 1. 准备基础环境
+
+确保服务器已具备：
+
+- Nginx
+- MySQL
+- Python 3
+- `python3-venv`
+- Supervisor
+- 宝塔面板（如果你使用宝塔管理）
+
+#### 2. 准备目录
+
+当前线上目录约定如下：
+
+- 前端站点目录：`/www/wwwroot/netclub`
+- 后端项目目录：`/root/Woruld_Sophia/backend`
+
+如目录不存在，请先创建或上传项目代码。
+
+#### 3. 初始化后端环境
+
+```bash
+cd /root/Woruld_Sophia/backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+```
+
+然后根据实际数据库信息修改 `.env`。
+
+#### 4. 初始化数据库
+
+确认 MySQL 已启动，并提前创建：
+
+- 数据库
+- 数据库用户
+- 对应权限
+
+然后执行：
+
+```bash
+cd /root/Woruld_Sophia/backend
+source venv/bin/activate
+python manage.py migrate
+python manage.py collectstatic --noinput
+```
+
+#### 5. 配置 Gunicorn（推荐 Supervisor 托管）
+
+建议不要再用手工 `nohup` 方式，而是使用 Supervisor 托管 Gunicorn。
+
+推荐将以下内容保存为：
+
+```bash
+/etc/supervisor/conf.d/netclub_gunicorn.conf
+```
+
+完整配置如下：
+
+```ini
+[program:netclub_gunicorn]
+command=/root/Woruld_Sophia/backend/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8000 netclub.wsgi:application
+directory=/root/Woruld_Sophia/backend
+user=root
+autostart=true
+autorestart=true
+startsecs=5
+stopwaitsecs=10
+stdout_logfile=/root/Woruld_Sophia/backend/logs/gunicorn_stdout.log
+stderr_logfile=/root/Woruld_Sophia/backend/logs/gunicorn_stderr.log
+stdout_logfile_maxbytes=20MB
+stdout_logfile_backups=5
+stderr_logfile_maxbytes=20MB
+stderr_logfile_backups=5
+environment=PYTHONUNBUFFERED="1"
+```
+
+创建日志目录并加载配置：
+
+```bash
+mkdir -p /root/Woruld_Sophia/backend/logs
+supervisorctl reread
+supervisorctl update
+supervisorctl start netclub_gunicorn
+supervisorctl status
+```
+
+常用管理命令：
+
+```bash
+supervisorctl status
+supervisorctl status netclub_gunicorn
+supervisorctl restart netclub_gunicorn
+supervisorctl stop netclub_gunicorn
+supervisorctl start netclub_gunicorn
+```
+
+查看日志：
+
+```bash
+tail -f /root/Woruld_Sophia/backend/logs/gunicorn_stdout.log
+tail -f /root/Woruld_Sophia/backend/logs/gunicorn_stderr.log
+```
+
+#### 6. 配置 Nginx
+
+Nginx 需要满足以下能力：
+
+- `/` 提供 Vue 前端 SPA
+- `/api/` 反向代理 Django / Gunicorn
+- `/static/` 映射 Django 静态文件
+- `/media/` 映射上传文件
+
+推荐直接参考本 README 上方的“保守版 Nginx 配置”。
+
+修改完成后执行：
+
+```bash
+nginx -t
+systemctl reload nginx
+```
+
+#### 7. 首次发布前端
+
+在本地执行：
+
+```bash
+npm install
+npm run build
+scp -r dist root@47.116.119.51:/root/upload/
+```
+
+然后在服务器执行：
+
+```bash
+bash /root/deploy_frontend.sh
+```
+
+#### 8. 验证部署结果
+
+建议至少检查以下内容：
+
+- 首页能正常打开
+- `http://47.116.119.51/api/login` 或 `https://47.116.119.51/api/login` 可连通
+- 登录页能正常提交请求
+- `supervisorctl status` 中 `netclub_gunicorn` 状态为 `RUNNING`
+- 浏览器强刷缓存后，前端页面为最新版本
+
+---
+
 ## 当前待完善内容
 
 这个项目目前更接近一个“前端原型 / 开发版”，如果要继续完善，建议优先做：
@@ -294,7 +756,7 @@ src/
 3. 将各业务分组页面从占位页改为正式页面，并按 `canViewGroup` / `canEditGroup` 控制工作项的查看与编辑
 4. 丰富首页内容
 5. 增加统一的 API 请求封装
-6. 完善 README、部署说明与项目文档
+6. 持续完善 README、部署说明与项目文档
 
 ---
 
