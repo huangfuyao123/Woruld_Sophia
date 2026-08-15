@@ -1,5 +1,5 @@
 <template>
-  <section class="detail-card account-card" @click="goToDetail">
+  <section class="detail-card account-card" style="--card-priority: 1" @click="goToDetail">
     <div class="card-top">
       <h2>账户管理</h2>
       <span class="card-arrow">›</span>

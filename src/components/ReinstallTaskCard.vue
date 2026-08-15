@@ -1,5 +1,5 @@
 <template>
-  <section class="detail-card task-card" :class="{ 'has-progress': true }" @click="goToDetail">
+  <section class="detail-card task-card" :class="{ 'has-progress': true }" style="--card-priority: 1" @click="goToDetail">
     <div class="card-top">
       <h2>多媒体教室主机系统重装</h2>
       <span class="card-arrow">›</span>

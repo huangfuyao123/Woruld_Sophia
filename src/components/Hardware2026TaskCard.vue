@@ -1,7 +1,7 @@
 <template>
-  <section class="detail-card task-card" @click="goToDetail">
+  <section class="detail-card task-card" style="--card-priority: 2" @click="goToDetail">
     <div class="card-top">
-      <h2>{{ tableName.value }}</h2>
+      <h2>{{ tableName }}</h2>
       <span class="card-arrow">›</span>
     </div>
 
