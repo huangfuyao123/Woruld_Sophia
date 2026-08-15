@@ -157,6 +157,18 @@ const router = createRouter({
       meta: { title: '硬件组2026', requiresAuth: true, profileType: 'hardware' },
     },
     {
+      path: '/profile/hardware/overview',
+      name: 'profile-hardware-overview',
+      component: () => import('@/views/profile/HardwareOverviewDetailView.vue'),
+      meta: { title: '硬件组概览', requiresAuth: true, profileType: 'hardware' },
+    },
+    {
+      path: '/profile/hardware/create-table',
+      name: 'profile-hardware-create-table',
+      component: () => import('@/views/profile/HardwareCreateTableView.vue'),
+      meta: { title: '新增表', requiresAuth: true, profileType: 'hardware' },
+    },
+    {
       path: '/profile/software',
       name: 'profile-software',
       component: () => import('@/views/profile/SoftwareProfileView.vue'),

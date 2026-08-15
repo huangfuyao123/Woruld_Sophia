@@ -1,240 +1,44 @@
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { apiRequest } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { canEditGroup, canViewGroup } from '@/utils/permissions'
 import { generateUuid } from '@/utils/generateUuid'
 
-export interface RepairRecord {
-  id: string
-  problemDate: string
-  classroom: string
-  repairPeriod: string
-  problemDetail: string
-  firstRepairDate: string
-  firstRepairStart: string
-  firstRepairEnd: string
-  firstRepairStatus: string
-  firstSolved: string
-  firstRepairPerson: string
-  remark: string
-  faultPhoto: string
-  secondRepairDate: string
-  secondRepairPerson: string
-  secondRepairContent: string
-  secondSolved: string
-  secondRepairStart: string
-  secondRepairEnd: string
-}
+const API_BASE = '/api'
 
-export interface Hardware2026ColumnLabels {
-  problemDate: string
-  classroom: string
-  repairPeriod: string
-  problemDetail: string
-  firstRepairDate: string
-  firstRepairTimeRange: string
-  firstRepairStatus: string
-  firstSolved: string
-  firstRepairPerson: string
-  firstRepairDuration: string
-  remark: string
-  faultPhoto: string
-  secondRepairDate: string
-  secondRepairPerson: string
-  secondRepairContent: string
-  secondSolved: string
-  secondRepairTimeRange: string
-  secondRepairDuration: string
-}
+export interface RepairRecord { id: string; problemDate: string; classroom: string; repairPeriod: string; problemDetail: string; firstRepairDate: string; firstRepairStart: string; firstRepairEnd: string; firstRepairStatus: string; firstSolved: string; firstRepairPerson: string; remark: string; faultPhoto: string; secondRepairDate: string; secondRepairPerson: string; secondRepairContent: string; secondSolved: string; secondRepairStart: string; secondRepairEnd: string }
+export interface Hardware2026ColumnLabels { problemDate: string; classroom: string; repairPeriod: string; problemDetail: string; firstRepairDate: string; firstRepairTimeRange: string; firstRepairStatus: string; firstSolved: string; firstRepairPerson: string; firstRepairDuration: string; remark: string; faultPhoto: string; secondRepairDate: string; secondRepairPerson: string; secondRepairContent: string; secondSolved: string; secondRepairTimeRange: string; secondRepairDuration: string }
+export interface Hardware2026MonthData { id: number; month: string; records: RepairRecord[]; columnLabels: Hardware2026ColumnLabels }
+interface Hardware2026BoardData { id: number; name: string; months: Hardware2026MonthData[] }
 
-const STORAGE_KEY = 'hw2026_table'
-const NAME_KEY = 'hw2026_table_name'
-const COLUMN_LABELS_KEY = 'hw2026_column_labels'
-
-const DEFAULT_COLUMN_LABELS: Hardware2026ColumnLabels = {
-  problemDate: '问题时间',
-  classroom: '教室',
-  repairPeriod: '报修节数',
-  problemDetail: '具体问题',
-  firstRepairDate: '维修日期',
-  firstRepairTimeRange: '维修时间段',
-  firstRepairStatus: '维修情况',
-  firstSolved: '是否解决',
-  firstRepairPerson: '维修人员',
-  firstRepairDuration: '维修时长',
-  remark: '备注',
-  faultPhoto: '故障照片',
-  secondRepairDate: '二次维修时间',
-  secondRepairPerson: '维修人员',
-  secondRepairContent: '维修内容',
-  secondSolved: '是否解决',
-  secondRepairTimeRange: '维修时间段',
-  secondRepairDuration: '维修时长',
-}
-
-function createColumnLabels(): Hardware2026ColumnLabels {
-  return { ...DEFAULT_COLUMN_LABELS }
-}
-
-function createEmptyRecord(): RepairRecord {
-  return {
-    id: generateUuid(),
-    problemDate: '',
-    classroom: '',
-    repairPeriod: '',
-    problemDetail: '',
-    firstRepairDate: '',
-    firstRepairStart: '',
-    firstRepairEnd: '',
-    firstRepairStatus: '',
-    firstSolved: '',
-    firstRepairPerson: '',
-    remark: '',
-    faultPhoto: '',
-    secondRepairDate: '',
-    secondRepairPerson: '',
-    secondRepairContent: '',
-    secondSolved: '',
-    secondRepairStart: '',
-    secondRepairEnd: '',
-  }
-}
-
-function loadRecords(): RepairRecord[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as RepairRecord[]
-      if (Array.isArray(parsed)) return parsed
-    }
-  } catch {
-    /* fallthrough */
-  }
-  return []
-}
-
-function loadTableName(): string {
-  return localStorage.getItem(NAME_KEY) || '硬件组2026'
-}
-
-function loadColumnLabels(): Hardware2026ColumnLabels {
-  try {
-    const raw = localStorage.getItem(COLUMN_LABELS_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<Hardware2026ColumnLabels>
-      return { ...DEFAULT_COLUMN_LABELS, ...parsed }
-    }
-  } catch {
-    /* fallthrough */
-  }
-  return createColumnLabels()
-}
-
-const records = reactive<RepairRecord[]>(loadRecords())
-const tableName = reactive({ value: loadTableName() })
-const columnLabels = reactive<Hardware2026ColumnLabels>(loadColumnLabels())
-
-let saveTimer: ReturnType<typeof setTimeout> | null = null
-
-function persistTableState(): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records))
-  localStorage.setItem(NAME_KEY, tableName.value)
-  localStorage.setItem(COLUMN_LABELS_KEY, JSON.stringify(columnLabels))
-}
-
-function scheduleSave(): void {
-  if (saveTimer) clearTimeout(saveTimer)
-  saveTimer = setTimeout(() => {
-    persistTableState()
-  }, 500)
-}
-
-function flushSave(): void {
-  if (saveTimer) {
-    clearTimeout(saveTimer)
-    saveTimer = null
-  }
-  persistTableState()
-}
-
-watch(records, scheduleSave, { deep: true })
-watch(tableName, scheduleSave, { deep: true })
-watch(columnLabels, scheduleSave, { deep: true })
-
-export function calcDuration(start: string, end: string): string {
-  if (!start || !end) return ''
-  const parts = start.split(':').map((n) => parseInt(n, 10))
-  const parts2 = end.split(':').map((n) => parseInt(n, 10))
-  if (parts.length < 2 || parts2.length < 2) return ''
-  const sh = parts[0] ?? 0
-  const sm = parts[1] ?? 0
-  const eh = parts2[0] ?? 0
-  const em = parts2[1] ?? 0
-  if (isNaN(sh) || isNaN(eh)) return ''
-  let minutes = eh * 60 + em - (sh * 60 + sm)
-  if (minutes < 0) minutes += 24 * 60
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  if (mins === 0) return `${hours}h`
-  return `${hours}h${mins}min`
-}
-
+const DEFAULT_COLUMN_LABELS: Hardware2026ColumnLabels = { problemDate:'问题时间', classroom:'教室', repairPeriod:'报修节数', problemDetail:'具体问题', firstRepairDate:'维修日期', firstRepairTimeRange:'维修时间段', firstRepairStatus:'维修情况', firstSolved:'是否解决', firstRepairPerson:'维修人员', firstRepairDuration:'维修时长', remark:'备注', faultPhoto:'故障照片', secondRepairDate:'二次维修时间', secondRepairPerson:'维修人员', secondRepairContent:'维修内容', secondSolved:'是否解决', secondRepairTimeRange:'维修时间段', secondRepairDuration:'维修时长' }
+function createColumnLabels(): Hardware2026ColumnLabels { return { ...DEFAULT_COLUMN_LABELS } }
+function createEmptyRecord(): RepairRecord { return { id: generateUuid(), problemDate:'', classroom:'', repairPeriod:'', problemDetail:'', firstRepairDate:'', firstRepairStart:'', firstRepairEnd:'', firstRepairStatus:'', firstSolved:'', firstRepairPerson:'', remark:'', faultPhoto:'', secondRepairDate:'', secondRepairPerson:'', secondRepairContent:'', secondSolved:'', secondRepairStart:'', secondRepairEnd:'' } }
+function normalizeRecord(raw: any): RepairRecord { const data = raw?.data || raw || {}; const rawId = raw?.id ?? data.id; const normalizedId = typeof rawId === 'string' ? rawId : rawId ? `r${rawId}` : generateUuid(); return { ...createEmptyRecord(), ...data, id: String(normalizedId) } }
+async function api<T>(path: string, init?: RequestInit): Promise<T> { return apiRequest<T>(`${API_BASE}${path}`, init) }
+export function calcDuration(start: string, end: string): string { if (!start || !end) return ''; const a = start.split(':').map((n) => parseInt(n, 10)); const b = end.split(':').map((n) => parseInt(n, 10)); if (a.length < 2 || b.length < 2) return ''; let minutes = (b[0] ?? 0) * 60 + (b[1] ?? 0) - ((a[0] ?? 0) * 60 + (a[1] ?? 0)); if (minutes < 0) minutes += 24 * 60; const h = Math.floor(minutes / 60); const m = minutes % 60; return m === 0 ? `${h}h` : `${h}h${m}min` }
 export function useHardware2026Data() {
-  const auth = useAuthStore()
-
-  const canManageSchema = computed(() => {
-    const user = auth.user
-    if (!user) return false
-    if (canEditGroup(user, 'hardware')) return true
-    return user.roles.some(
-      (a) =>
-        a.role === 'teacher' &&
-        a.scope.type === 'groups' &&
-        a.scope.groupIds.includes('hardware'),
-    )
-  })
-
-  const canEditTableName = computed(() => canManageSchema.value)
-  const canEditFieldSchema = computed(() => canManageSchema.value)
-
-  const canEditContent = computed(() => {
-    return canViewGroup(auth.user, 'hardware')
-  })
-
-  const canAddRow = computed(() => canEditContent.value)
-
-  const totalCount = computed(() => records.length)
-  const solvedCount = computed(
-    () => records.filter((r) => r.firstSolved === '已解决' || r.secondSolved === '已解决').length,
-  )
-  const unsolvedCount = computed(
-    () => records.filter((r) => r.firstSolved === '未解决' && r.secondSolved !== '已解决').length,
-  )
-  const hasSecondRepair = computed(() => records.filter((r) => r.secondRepairDate).length)
-
-  function addRow(): void {
-    records.push(createEmptyRecord())
-  }
-
-  function deleteRow(id: string): void {
-    const idx = records.findIndex((r) => r.id === id)
-    if (idx >= 0) records.splice(idx, 1)
-  }
-
-  return {
-    records,
-    tableName,
-    columnLabels,
-    canManageSchema,
-    canEditTableName,
-    canEditFieldSchema,
-    canEditContent,
-    canAddRow,
-    totalCount,
-    solvedCount,
-    unsolvedCount,
-    hasSecondRepair,
-    addRow,
-    deleteRow,
-    flushSave,
-  }
+  const auth = useAuthStore(); const board = reactive<Hardware2026BoardData>({ id: 0, name: '硬件组2026', months: [] }); const selectedMonthId = ref<number | null>(null); const loaded = ref(false); let saveTimer: ReturnType<typeof setTimeout> | null = null
+  const canManageSchema = computed(() => { const u = auth.user; if (!u) return false; if (canEditGroup(u, 'hardware')) return true; return u.roles.some((a) => a.role === 'teacher' && a.scope.type === 'groups' && a.scope.groupIds.includes('hardware')) })
+  const canEditTableName = computed(() => canManageSchema.value); const canEditFieldSchema = computed(() => canManageSchema.value); const canEditContent = computed(() => canViewGroup(auth.user, 'hardware')); const canAddRow = computed(() => canEditContent.value); const canAddMonth = computed(() => canManageSchema.value)
+  const currentMonthData = computed(() => board.months.find((m) => m.id === selectedMonthId.value) || null)
+  const records = computed<RepairRecord[]>({ get: () => currentMonthData.value?.records || [], set: (val) => { if (currentMonthData.value) currentMonthData.value.records = val } })
+  const tableName = computed<string>({ get: () => board.name, set: (val) => { board.name = val } })
+  const columnLabels = computed<Hardware2026ColumnLabels>(() => currentMonthData.value?.columnLabels || createColumnLabels())
+  const monthList = computed(() => board.months.map((m) => ({ id: m.id, month: m.month }))); const activeMonth = computed(() => currentMonthData.value?.month || '')
+  const totalCount = computed(() => records.value.length); const solvedCount = computed(() => records.value.filter((r) => r.firstSolved === '已解决' || r.secondSolved === '已解决').length); const unsolvedCount = computed(() => records.value.filter((r) => r.firstSolved === '未解决' && r.secondSolved !== '已解决').length); const hasSecondRepair = computed(() => records.value.filter((r) => r.secondRepairDate).length)
+  function scheduleSave(): void { if (saveTimer) clearTimeout(saveTimer); saveTimer = setTimeout(flushSave, 300) }
+  async function load(): Promise<void> { const boardData = await api<Hardware2026BoardData>('/hardware2026/board'); board.id = boardData.id; board.name = boardData.name; board.months.splice(0, board.months.length, ...(boardData.months || []).map((m: any) => ({ id: m.id, month: m.month, records: (m.records || []).map(normalizeRecord), columnLabels: { ...DEFAULT_COLUMN_LABELS, ...(m.column_labels || m.columnLabels || {}) } }))); const pref = await api<{ lastMonthId: number | null }>('/hardware2026/preference'); selectedMonthId.value = pref.lastMonthId || board.months[0]?.id || null; loaded.value = true }
+  async function flushSave(): Promise<void> { if (!loaded.value) return; if (selectedMonthId.value) await api('/hardware2026/preference', { method: 'PUT', body: JSON.stringify({ lastMonthId: selectedMonthId.value }) }); if (saveTimer) { clearTimeout(saveTimer); saveTimer = null } }
+  async function setMonthById(id: number): Promise<void> { selectedMonthId.value = id; await flushSave() }
+  async function addMonth(month: string): Promise<void> { const m = await api<any>('/hardware2026/months', { method: 'POST', body: JSON.stringify({ month, column_labels: DEFAULT_COLUMN_LABELS }) }); await load(); selectedMonthId.value = Number(m.id); await flushSave() }
+  async function updateMonth(id: number, month: string): Promise<void> { await api(`/hardware2026/months/${id}`, { method: 'PUT', body: JSON.stringify({ month }) }); await load(); if (selectedMonthId.value === id) selectedMonthId.value = id }
+  async function deleteMonth(id: number): Promise<void> { await api(`/hardware2026/months/${id}`, { method: 'DELETE' }); await load(); if (selectedMonthId.value === id) selectedMonthId.value = board.months[0]?.id || null; await flushSave() }
+  async function addRow(): Promise<void> { if (!currentMonthData.value) return; const created = await api<any>(`/hardware2026/months/${currentMonthData.value.id}/records`, { method: 'POST', body: JSON.stringify({ data: createEmptyRecord() }) }); currentMonthData.value.records.push(normalizeRecord(created)) }
+  async function deleteRow(id: string): Promise<void> { if (!currentMonthData.value) return; const pk = Number(String(id).replace(/^r/, '')); if (!pk) return; await api(`/hardware2026/records/${pk}`, { method: 'DELETE' }); currentMonthData.value.records = currentMonthData.value.records.filter((r) => r.id !== `r${pk}` && r.id !== String(pk)) }
+  async function resetColumnLabels(): Promise<void> { if (!currentMonthData.value) return; currentMonthData.value.columnLabels = createColumnLabels(); await api(`/hardware2026/months/${currentMonthData.value.id}`, { method: 'PUT', body: JSON.stringify({ month: currentMonthData.value.month, column_labels: currentMonthData.value.columnLabels }) }) }
+  async function renameTable(next: string): Promise<void> { board.name = next; await api('/hardware2026/board', { method: 'PUT', body: JSON.stringify({ name: next }) }) }
+  async function saveRecord(row: RepairRecord): Promise<void> { if (!currentMonthData.value) return; const pk = Number(String(row.id).replace(/^r/, '')); if (!pk) return; await api(`/hardware2026/records/${pk}`, { method: 'PUT', body: JSON.stringify({ data: row }) }) }
+  watch(records, () => { scheduleSave() }, { deep: true }); watch(columnLabels, () => { scheduleSave() }, { deep: true }); load().catch((err) => { console.error('hardware2026 load failed:', err) })
+  return { records, tableName, columnLabels, monthList, activeMonth, selectedMonthId, canManageSchema, canEditTableName, canEditFieldSchema, canEditContent, canAddRow, canAddMonth, totalCount, solvedCount, unsolvedCount, hasSecondRepair, addRow, deleteRow, addMonth, updateMonth, deleteMonth, setMonth: setMonthById, resetColumnLabels, renameTable, saveRecord, flushSave }
 }
