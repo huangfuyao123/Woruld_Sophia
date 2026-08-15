@@ -9,7 +9,7 @@
   >
     <AccountManagementCard />
 
-    <section class="detail-card">
+    <section class="detail-card" style="--card-priority: 2">
       <h2>系统概览</h2>
       <p>root 账号拥有最高权限，可管理所有账户与模块。</p>
     </section>

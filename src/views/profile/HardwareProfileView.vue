@@ -5,23 +5,29 @@
     role-label="硬件组"
     theme="hardware"
   >
-    <ReinstallTaskCard />
     <Hardware2026TaskCard />
+    <ReinstallTaskCard />
 
-    <section class="detail-card">
-      <h2>设备清单</h2>
-      <p>暂无数据，后续在此展示硬件组管理的设备列表与状态。</p>
-      <span class="gh-placeholder-hint">待后端接入</span>
+    <section class="detail-card" style="--card-priority: 3" @click="goOverview">
+      <h2>概览</h2>
+      <p>管理教室数据、组内成员与巡检表模板。</p>
+      <span class="gh-placeholder-hint">点击进入</span>
     </section>
-    <section class="detail-card">
-      <h2>组内成员</h2>
-      <p>暂无数据，后续在此展示硬件组成员列表。</p>
+    <section class="detail-card" style="--card-priority: 4" @click="goCreateTable">
+      <h2>新增表</h2>
+      <p>创建引用模板或自定义字段的新表。</p>
+      <span class="gh-placeholder-hint">点击创建</span>
     </section>
   </ProfileLayout>
 </template>
 
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
 import ProfileLayout from '@/layouts/ProfileLayout.vue'
 import ReinstallTaskCard from '@/components/ReinstallTaskCard.vue'
 import Hardware2026TaskCard from '@/components/Hardware2026TaskCard.vue'
+
+const router = useRouter()
+function goOverview(): void { router.push('/profile/hardware/overview') }
+function goCreateTable(): void { router.push('/profile/hardware/create-table') }
 </script>
